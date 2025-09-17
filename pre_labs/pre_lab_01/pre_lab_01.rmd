@@ -249,4 +249,4 @@ No code here; I want you to provide three questions that this data suggests to y
 
 2.  Have there been any major changes in the median amount of seats for certain departments over time?
 
-3.  Has a change been seen in the amount of classes offered per department over time? Have some departments been increasing the number of classes offered while some had decreased the number of classes offered per semester?
+3.  Has a change been seen in the amount of classes offered per department over time? Have some departments been increasing the number of classes offered while some had decreased the number of classes offered per term/semester?
