@@ -1,0 +1,192 @@
+---
+title: "lab_04_ai"
+author: "Daniel Trielli"
+date: "2024-09-26"
+output: html_document
+---
+
+## Setup
+
+Let's load the necessary libraries and, using your API key, setup your credentials:
+
+```{r}
+library(axolotr)
+create_credentials(GROQ_API_KEY = "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")
+```
+
+See that "Please restart your R session for changes to take effect."? Go ahead and do that; you'll need to rerun the `library()` function for axolotr, and let's load tidyverse while we're at it.\
+
+```{r}
+library(axolotr)
+library(tidyverse)
+```
+
+## Testing
+
+Let's make sure that worked. We'll be using the [Llama 3.1 model released by Meta](https://ai.meta.com/blog/meta-llama-3-1/).
+
+```{r}
+groq_response <- axolotr::ask(
+  prompt = "Give me a 100-word pitch for a new Lilo and Stitch sequel",
+  model = "llama-3.1-8b-instant"
+)
+
+groq_response
+```
+
+Did that work?
+
+## Q1. Turning unstructured information into data: let's take [this article](https://www.nytimes.com/2024/09/27/arts/maggie-smith-dead.html) about the death of Dame Maggie Smith and try to extract information from it. Your goal is to have Groq create a table with the films and TV shows mentioned in this news article, and extract the following information about them: title, year, role, director, co-stars, and awards. From the table that it created, answer this: is the information correct? Did all information come from the article text?
+
+```{r}
+#Loading article text
+text = "Maggie Smith, one of the finest British stage and screen actors of her generation, whose award-winning roles ranged from a freethinking Scottish schoolteacher in /“The Prime of Miss Jean Brodie/” to the acid-tongued dowager countess on /“Downton Abbey,/” died on Friday in London. She was 89.
+
+Her death, in a hospital, was announced by her family in a statement issued by a publicist. The statement gave no cause of death.
+
+American moviegoers barely knew Ms. Smith (now Dame Maggie to her countrymen) when she starred in /“The Prime of Miss Jean Brodie/” (1969), about a 1930s girls’-school teacher who dared to have progressive social views — and a love life. Vincent Canby’s review in The New York Times described her performance as /“a staggering amalgam of counterpointed moods, switches in voice levels and obliquely stated emotions, all of which are precisely right./” It brought her the Academy Award for best actress.
+
+She won a second Oscar, for best supporting actress, for /“California Suite/” (1978), based on Neil Simon’s stage comedy. Her character, a British actress attending the Oscars with her bisexual husband (Michael Caine), has a disappointing evening at the ceremony and a bittersweet night in bed.
+
+In real life, prizes had begun coming Ms. Smith’s way in the 1950s, when at 20 she won her first Evening Standard Award. By the turn of the millennium, she had the two Oscars, two Tonys, two Golden Globes, half a dozen Baftas (British Academy of Film and Television Awards) and scores of nominations. Yet she could go almost anywhere unrecognized.
+
+Until /“Downton Abbey./”
+
+That series followed the Earl of Grantham (Hugh Bonneville), his mostly aristocratic family and his troubled household staff at their grand Jacobean mansion as the world around them, between 1912 and 1925, refused to stand still.
+
+After its 2010 British premiere and its 2011 American debut, the show ran six seasons. Its breakout star, from the beginning, was Ms. Smith, playing Lord Grantham’s elderly and still stubbornly Victorian widowed mother, Violet Crawley, the dowager countess. She disapproved of electric lights, was unfamiliar with the word /“weekend/” and never met a person or situation she couldn’t ridicule with withering imperiousness. When her daughter-in-law considered sending a younger relative for a stay in New York, Lady Violet objected: /“Oh, I don’t think things are quite that desperate./”
+
+Suddenly, in her mid-70s, Ms. Smith was a megastar.
+
+/“It’s ridiculous. I’d led a perfectly normal life until ‘Downton Abbey,’ /” she told Mark Lawson at the B.F.I. and Radio Times Festival in 2017, adding later: /“Nobody knew who the hell I was./”
+
+The closest Ms. Smith had come to such visibility was with the Harry Potter movies. She was Minerva McGonagall, the Hogwarts School’s stern but fearless transformation teacher, in seven of the eight films, from /“Harry Potter: The Sorceror’s Stone/” (2001) to /“Harry Potter: The Deathly Hallows Part 2/” (2011).
+
+McGonagall, wearing high-necked Victorian-style gowns, a distinctive Scottish brooch, and upswept hair beneath a tall, black witch’s hat, was a striking onscreen presence. Yet Ms. Smith did not find herself constantly pursued in public, except by children.
+
+/“A lot of very small people kind of used to say hello to me, and that was nice,/” she recalled on /“The Graham Norton Show/” in 2015. One boy carefully asked her, /“Were you really a cat?/”)"
+```
+
+```{r}
+text = "Maggie Smith, one of the finest British stage and screen actors of her generation, whose award-winning roles ranged from a freethinking Scottish schoolteacher in /“The Prime of Miss Jean Brodie/” to the acid-tongued dowager countess on /“Downton Abbey,/” died on Friday in London. She was 89.
+
+Her death, in a hospital, was announced by her family in a statement issued by a publicist. The statement gave no cause of death.
+
+American moviegoers barely knew Ms. Smith (now Dame Maggie to her countrymen) when she starred in /“The Prime of Miss Jean Brodie/” (1969), about a 1930s girls’-school teacher who dared to have progressive social views — and a love life. Vincent Canby’s review in The New York Times described her performance as /“a staggering amalgam of counterpointed moods, switches in voice levels and obliquely stated emotions, all of which are precisely right./” It brought her the Academy Award for best actress.
+
+She won a second Oscar, for best supporting actress, for /“California Suite/” (1978), based on Neil Simon’s stage comedy. Her character, a British actress attending the Oscars with her bisexual husband (Michael Caine), has a disappointing evening at the ceremony and a bittersweet night in bed.
+
+In real life, prizes had begun coming Ms. Smith’s way in the 1950s, when at 20 she won her first Evening Standard Award. By the turn of the millennium, she had the two Oscars, two Tonys, two Golden Globes, half a dozen Baftas (British Academy of Film and Television Awards) and scores of nominations. Yet she could go almost anywhere unrecognized.
+
+Until /“Downton Abbey./”
+
+That series followed the Earl of Grantham (Hugh Bonneville), his mostly aristocratic family and his troubled household staff at their grand Jacobean mansion as the world around them, between 1912 and 1925, refused to stand still.
+
+After its 2010 British premiere and its 2011 American debut, the show ran six seasons. Its breakout star, from the beginning, was Ms. Smith, playing Lord Grantham’s elderly and still stubbornly Victorian widowed mother, Violet Crawley, the dowager countess. She disapproved of electric lights, was unfamiliar with the word /“weekend/” and never met a person or situation she couldn’t ridicule with withering imperiousness. When her daughter-in-law considered sending a younger relative for a stay in New York, Lady Violet objected: /“Oh, I don’t think things are quite that desperate./”
+
+Suddenly, in her mid-70s, Ms. Smith was a megastar.
+
+/“It’s ridiculous. I’d led a perfectly normal life until ‘Downton Abbey,’ /” she told Mark Lawson at the B.F.I. and Radio Times Festival in 2017, adding later: /“Nobody knew who the hell I was./”
+
+The closest Ms. Smith had come to such visibility was with the Harry Potter movies. She was Minerva McGonagall, the Hogwarts School’s stern but fearless transformation teacher, in seven of the eight films, from /“Harry Potter: The Sorceror’s Stone/” (2001) to /“Harry Potter: The Deathly Hallows Part 2/” (2011).
+
+McGonagall, wearing high-necked Victorian-style gowns, a distinctive Scottish brooch, and upswept hair beneath a tall, black witch’s hat, was a striking onscreen presence. Yet Ms. Smith did not find herself constantly pursued in public, except by children.
+
+/“A lot of very small people kind of used to say hello to me, and that was nice,/” she recalled on /“The Graham Norton Show/” in 2015. One boy carefully asked her, /“Were you really a cat?/”)"
+
+msmith_response <- axolotr::ask(
+  prompt = paste("Given the following text,create a table and extract information such as films and TV shows mentioned in this article into a CSV file with the following structure, including headers, with no yapping: title,year,role,director,co-stars,awards", text),
+  model = "llama-3.1-8b-instant"
+)
+
+msmith_response
+```
+
+**Answer: Yes, all that I wanted Groq to display, it displayed. However, it was not in a neat table, just a bunch or jumbled together code.**
+
+------------------------------------------------------------------------
+
+## Q2. Helping with code explanation: Your data journalism instructor has given you a block of code but you can't make sense of it. Ask Groq if it can explain what the code does with this UMD course. Is the answer correct?
+
+```{r}
+r_code_example = 'umd_courses |>
+  filter(str_detect(title, "Climate") & seats > 0) |>
+  group_by(department) |>
+  summarize(classes = n()) |>
+  arrange(desc(classes))'
+```
+
+```{r}
+explain_code <- axolotr::ask(prompt = paste("Explain the following code block \'r_code_examplefor me\'",text))
+```
+
+**Answer:**
+
+------------------------------------------------------------------------
+
+## Q3. Helping with code debugging: paste the code block of an answer you had for a previous lab down here and ask Grok if that code is correct, based on the question in the lab. What do you think about its response?
+
+```{r}
+lab_question = "Using case_when(), create a column in the Maryland expenses data called spending_location indicating whether each record spent money in Maryland or outside Maryland. For records that are in Maryland, make the new column's value \'In-state\' and for all others, make it \'Out of state\'. Then write code that shows the total amount of money spent in each category and describe the results. You can do this in one statement or break it up into two statements (saving the new column to your dataframe)"
+
+your_r_code_lab = "location_maryland_expenses <- maryland_expenses %>%
+  mutate(
+    spending_location = case_when(
+      str_detect(address, \"Maryland\") ~ \"In-state\",
+      str_detect(address, \"California\" ) ~ \"Out of State\",
+      str_detect(address, \"Washington\") ~ \"Out of State\",
+      str_detect(address, \"Louisiana\") ~ \"Out of State\",
+      str_detect(address, \"Florida\") ~ \"Out of State\",
+      str_detect(address, \"North Carolina\") ~ \"Out of State\",
+      str_detect(address, \"Massachusetts\") ~ \"Out of State\",
+      str_detect(address, \"Texas\") ~ \"Out of State\",
+      str_detect(address, \"Virginia\") ~ \"Out of State\",
+      str_detect(address, \"West Virginia\") ~ \"Out of State\"
+    )
+  ) %>% 
+  group_by(spending_location) %>%
+  summarise(total = sum(amount)) %>%
+  arrange(desc(total))
+  
+
+head(location_maryland_expenses)
+
+
+"
+
+
+```
+
+```{r}
+
+
+```
+
+**Answer:**
+
+------------------------------------------------------------------------
+
+## Q4. Brainstorming about strategies for data analysis and visualization: ask Groq to give you ideas about potential news stories from data analyses using [this data set](https://data.montgomerycountymd.gov/Public-Safety/Crash-Reporting-Incidents-Data/bhju-22kf/about_data). You're going to have to describe the dataset so that Groq can make some suggestions. What do you think of its response?
+
+```{r}
+
+
+```
+
+**Answer:**
+
+------------------------------------------------------------------------
+
+## Q5. Using AI to write news articles: ask Groq to write a 500-word news article about a car crash at the intersection between Knox Road and Regents Drive. What issues or problems do you see with the output?
+
+```{r}
+axolotr::ask(
+  prompt = "Write me a 500-word news article about a car crash at the intersection between Knox Road and Regents Drive", 
+  model = "llama-3.1-8b-instant"
+  )
+
+
+
+```
+
+**Answer: The main issue that I saw was that it simply says NULL. I don't know if this is due to an error in my code or if it was supposed to come up as NULL.**
