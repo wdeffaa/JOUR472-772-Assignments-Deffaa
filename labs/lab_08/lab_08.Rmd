@@ -49,7 +49,7 @@ pg_county_overdoses_date <- pg_county_overdoeses %>%
 
 Compare the results here to those from the pre_lab_08 bar chart - are there major differences in the months with the highest and lowest figures? Describe that below.
 
-**A1.**
+**Yes, there are some noticeable differences in this bar chart than the one in pre-lab 8. The highest and lowest months are different than the ones in the pre-lab, with the lowest month now being Jan. and the highest month now being Dec.**
 
 ```{r}
 pg_calls_permonth <- pg_county_overdoses_date %>%
@@ -79,7 +79,7 @@ pg_calls_permonth %>%
 
 Describe the pattern of results; you may want to look at the data to dig into particular outliers.
 
-**A2.**
+**For the most part there is a big up and down in terms of calls made, but there is a very noticeable spike during the middle of the year, just before the 30 week mark. Additionally, there is another smaller spike right before the end of the year.**
 
 ```{r}
 pg_calls_perweek <-  pg_county_overdoses_date %>%
@@ -113,13 +113,37 @@ To answer this question, do the following:
 6.  Add a label for each point that shows the zip code using geom_text() - see some examples of its use at <https://ggplot2.tidyverse.org/reference/geom_text.html#ref-examples>. Try to make the names as easy to read as possible by avoiding overlap.
 7.  In the answer space below, describe what you see and answer the questions posed above. In a general sense, what do you think this means? Feel free to consider the actual raw values: how would you report out the main point(s) of this chart?
 
-**A3.**
+**There is a pretty large pattern between zipcodes with lower income having more calls, but at the same time, even lower income zip codes have low call numbers. This would be an interesting point to investigate.**
 
 ```{r}
+
+pg_calls_zip <- pg_county_overdoeses %>%
+  group_by(zipcode) %>%
+  summarise(total_calls = n())
 
 md_median_income_zip <- get_acs(geography = 'zcta',
                                 variables = 'B19013_001'  ,
                                 state = 'MD',
                                 year = 2019
                                 )
+
+pg_calls_with_income <- pg_calls_zip %>% inner_join(md_median_income_zip, by = c("zipcode" = "GEOID"))
+
+ggplot(pg_calls_with_income, aes(x = estimate, y = total_calls, label = zipcode)) +
+  geom_point(color = "black", size = 3, alpha = 1)
+  labs(
+    title = "Total 911 Overdose Calls vs. Median Household Income by ZIP Code",
+    subtitle = "Prince George’s County, Maryland (2019)",
+    x = "Median Household Income (USD)",
+    y = "Total 911 Overdose Calls",
+    caption = "Sources: Prince George’s County 911 Calls; U.S. Census Bureau, American Community Survey 2019"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    axis.title = element_text(size = 11)
+  )
+
+
 ```
