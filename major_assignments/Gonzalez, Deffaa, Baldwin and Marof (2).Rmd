@@ -1,0 +1,334 @@
+---
+title: "TRI Data Analysis"
+output: html_document
+date: "Dic 1"
+author: Isabella Gonzalez, William Deffaa, Rebecca Baldwin, Mehedi Marof 
+---
+
+# **Introduction:**
+
+Our team wants to answer the next questions using the Toxics Release Inventory (TRI) of the entire U.S. in 2024.
+
+1.  What industry sector and what companies specifically have released the most, and the least amount of toxins?
+
+2.  What specific chemicals are released the most, and the least? What percentage of these chemicals are United States Clean Air Act Chemicals, and what percentage are not?
+
+3.  What percentage of the chemicals released in the country are transferred off-site? In which neighborhoods are the facilities located that receive these chemical transfers or disposals? Why they are released here?
+
+4.  Do higher toxic releases correlate with higher asthma or cancer rates near these sites?
+
+5.  Which Maryland communities are exposed to the highest levels of toxic pollution, and are Black, low-income, or immigrant neighborhoods disproportionately affected?
+
+## **Libraries:**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+
+install.packages("USAboundaries")
+
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(stringr)
+library(tigris)
+library(ggplot2)
+library(sf)
+
+
+```
+
+## Data and cleaned data:
+
+```{r}
+tri_raw <- read_csv("tri.csv", show_col_types = FALSE)
+
+tri_clean <- tri_raw |>
+  rename_with(~ iconv(.x, to = "ASCII", sub = "")) |>
+  rename_with(~ gsub("^[0-9]+\\.\\s*", "", .x)) |>
+  clean_names()
+
+numeric_cols <- tri_clean |>
+  select(
+    contains("release"),
+    contains("transfer"),
+    contains("waste"),
+    contains("total"),
+    matches("^x5"),   
+    matches("^x6"),   
+    matches("^x7"),   
+    matches("^x8"),
+    -latitude,          
+    -longitude
+    ) |>
+  names()
+
+tri_clean <- tri_clean |>
+  mutate(
+    across(
+      all_of(numeric_cols),
+      ~ suppressWarnings(parse_number(as.character(.x)))
+    )
+  )
+
+str(tri_clean)
+```
+
+## **Basic Data Analysis:**
+
+The TRI dataset contains 77,295 rows and 122 columns, and represents facility-level reports. It includes detailed information on each facility’s location, industrial sector, chemical names, release amounts, transfer activities, and indicators like if a chemical is listed under the U.S. Clean Air Act.
+
+Several columns contain missing data. TRI data are self-reported estimates rather than measured environmental concentrations, and the inventory only includes facilities that exceed reporting thresholds, so it doesn't capture all sources of pollution. The dataset also doesn't contain health outcomes or demographic variables, so to answer questions 3, 4 and 5, we have to combine the TRI dataset with other databases.
+
+The dataset would work to analyzing which chemicals, companies, and industry sectors release the most pollution, and to quantify the share of pollution transferred off-site. However, questions concerning asthma or cancer outcomes, or the racial and socioeconomic composition of affected communities, cannot be answered with TRI data alone and require merging with external health and demographic datasets, like the Census ACS data.
+
+The TRI dataset for this project is limited to the year 2024, meaning it cannot show trends over time or historical pollution patterns. The data only include facilities that meet EPA reporting thresholds and only include listed TRI chemicals.
+
+### QUESTION NO. 1: What industry sector and what companies specifically have released the most, and the least amount of toxins?
+
+#### a) Industry sector
+
+```{r}
+#Starting a new dataframe from tri_clean
+industry_totals <- tri_clean |>
+#We are grouping by industry sector and summarising total industry release by adding all of the total releases and arranging them in descending order
+  group_by(industry_sector) |>
+  summarise(total_industry_release = sum(total_releases, na.rm = TRUE)) |>
+  arrange(desc(total_industry_release))
+
+head(industry_totals, 10)
+#Here we are displaying the top 10, and bottom 10 industry totals
+tail(industry_totals, 10)
+ 
+```
+
+#### b) Companies
+
+```{r}
+#Starting a new dataframe from tri_clean
+company_totals <- tri_clean |>
+#We are grouping by facility name and summarising total company release by adding all of the total releases and arranging them in descending order 
+  group_by(facility_name) |>
+  summarise(total_company_release = sum(total_releases, na.rm = TRUE)) |>
+  arrange(desc(total_company_release))
+
+head(company_totals, 10)
+#Here we are displaying the top 10, and bottom 10 industry totals 
+tail(company_totals, 10)
+
+```
+
+**Findings:**
+
+Some of our main findings from the industry sector show that metal mining, chemicals and primary metals have been the industries that have released the most amount of toxins, while some the industries that have released the least amount of toxins are Beverages, Furniture and Coal Mining.
+
+When it comes to looking at individual companies that release toxins, the companies that release toxins the most are Red Dog Operations, Kennecott Utah Copper Mine and Hecla Greens Creek Mining Company. The companies that release the least consists of quite a few that release no toxins whatsoever, including Zaclon LLC, Zero Zone Inc. and Zenith Fuel Systems LLC.
+
+### QUESTION NO. 2: What specific chemicals are released the most, and the least? What percentage of these chemicals are United States Clean Air Act Chemicals, and what percentage are not?
+
+#### a) Most released chemicals
+
+```{r}
+#Starting a new dataframe from tri_clean
+chemical_totals <- tri_clean |>
+#We are grouping by chemicals and summarising total chemical release by adding all of the total releases per-chemical and then arranging them in descending order
+  group_by(chemical) |>
+  summarise(total_chemical_release = sum(total_releases, na.rm = TRUE)) |>
+  arrange(desc(total_chemical_release))
+
+head(chemical_totals, 10)
+#Here we are displaying the top 10, and bottom 10 chemical release totals 
+tail(chemical_totals, 10)
+
+```
+
+**GRAPH**
+
+```{r}
+chemical_totals |>
+#We are using the chemical_totals dataframe for this graph
+  slice_max(total_chemical_release, n = 10) |>
+#Here we are taking the top 10 rows for this graph
+  ggplot(aes(x = reorder(chemical, total_chemical_release),
+             y = total_chemical_release)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 Chemicals Released (TRI 2024)",
+       x = "Chemical",
+       y = "Total Releases")
+#We are creating a horizontal bar chart using ggplot2, with the chemicals being put on the x-axis and the totals for them being displayed on the y-axis
+```
+
+#### b) Percentage Clean Air Act Chemicals
+
+```{r}
+top10_chems <- chemical_totals |>
+  slice_max(total_chemical_release, n = 10)
+#Here we are taking the top 10 chemicals that are shown in the bar cart and putting them in a seperate table
+top10_with_caa <- top10_chems |>
+  left_join(
+    tri_clean |> distinct(chemical, clean_air_act_chemical),
+    by = "chemical"
+  )
+#We are now left-joining another column that says whether the chemical is a clean air act chemical or not 
+num_caa_top10 <- sum(top10_with_caa$clean_air_act_chemical == 1, na.rm = TRUE)
+num_non_caa_top10 <- 10 - num_caa_top10
+#This will help show whether if a chemical is a CAA chemical 
+percent_caa_top10 <- (num_caa_top10 / 10) * 100
+percent_non_caa_top10 <- 100 - percent_caa_top10
+#We are now putting the percentage out of whether these chemicals are CAA chemicals 
+percent_caa_top10
+percent_non_caa_top10
+
+```
+
+**Findings:**
+
+We found that the chemicals that were released the most, were Zinc compounds, Lead compounds and Nitrate compounds. The chemicals that were released the least were multiple that released not at all, including Profenofos, Prometryn and Sethoxydim.
+
+Through the bar chart, we are able to see that the top 2 most released chemicals tower above the remaining 8 chemicals in terms of how much they are released.
+
+Through the dataset, we are able to see that none of the top 10 most released chemicals are CAA chemicals.
+
+### QUESTION NO. 3: What percentage of the chemicals released in the country are transferred off-site? In which neighborhoods are the facilities located that receive these chemical transfers or disposals? Why they are released here?
+
+#### a) Percentage transferred off-site.
+
+```{r}
+pct_offsite <- tri_clean |>
+  summarise(
+    total_offsite = sum(off_site_release_total, na.rm = TRUE),
+    total_onsite  = sum(on_site_release_total, na.rm = TRUE),
+    total_all     = sum(total_releases, na.rm = TRUE)
+  ) |>
+  mutate(
+    percent_offsite = 100 * total_offsite / total_all,
+    percent_onsite  = 100 * total_onsite / total_all
+  )
+
+print(pct_offsite)
+  
+
+```
+
+#### b) Counties where chemicals are released.
+
+```{r}
+receiving_sites <- tri_clean |>
+  filter(off_site_release_total > 0) |>
+  select(facility_name, city, county, st, zip, off_site_release_total,latitude,longitude) |>
+  arrange(desc(off_site_release_total))
+
+head(receiving_sites, 10)
+
+```
+
+### QUESTION NO. 4: How do federally owned facilities differ from privately owned facilities in the types of chemicals they report, the industries they represent, and the forms of releases they use?
+
+**Explanation:** We filtered the TRI dataset using the "federal_facility" column, creating two separate subsets. We then counted how many facilities fall into each industry sector within each group to see how their industrial footprints differ. Next, we summarized the chemical classifications reported by federal facilities using the "classification" and "metal_category" fields. Finally, we compared release form types between federal and private sites by counting occurrences of each "form_type" value.
+
+**Findings:** The results show that federally owned facilities make up only a tiny share of all sites and participate in a much narrower set of industrial sectors. The other sector alone accounts for 964 federal facilities, followed by electric utilities with 90 facilities; all other sectors contain only a handful of federal sites. Private facilities, by contrast, appear in every major industrial category, with chemical manufacturing alone totaling more than 17,600 reports.
+
+```{r}
+federal_facilities <- tri_clean |> filter(federal_facility == "YES")
+private_facilities <- tri_clean |> filter(federal_facility == "NO")
+
+federal_industry <- federal_facilities |>
+  count(industry_sector, sort = TRUE)
+
+private_industry <- private_facilities |>
+  count(industry_sector, sort = TRUE)
+
+head(federal_industry, 10)
+head(private_industry, 10)
+
+federal_chemicals <- federal_facilities |>
+  count(classification, metal_category, sort = TRUE)
+
+head(federal_chemicals, 10)
+
+federal_forms <- federal_facilities |>
+  count(form_type, sort = TRUE)
+
+private_forms <- private_facilities |>
+  count(form_type, sort = TRUE)
+
+federal_forms
+private_forms
+
+```
+
+### QUESTION NO. 5: How much of the total reported releases come from chemicals classified as carcinogens, PBTs, or PFAS, and which industry sectors account for most of these high-hazard releases?
+
+**Explanation:** We created indicator variables for each hazard category using the TRI fields "carcinogen", "pbt" and "pfas". We summed the total releases associated with each category and calculated their percentage of all releases. To understand which industries contribute most to these high-hazard categories, we grouped the data by "industry_sector" and calculated total hazardous releases per sector. Then, we ranked sectors by their high-hazard release totals and visualized the top contributors.
+
+Carcinogens and PBTs together account for more than one-quarter of all releases in 2024, with carcinogens at 8.3% and PBTs at 18.8% of national totals. PFAS releases are very small by weight.
+
+### **a. Overall share of carcinogen, PBT, and PFAS releases**
+
+```{r}
+hazard_totals <- tri_clean |>
+mutate(
+is_carcinogen = carcinogen == "YES",
+is_pbt        = pbt == "YES",
+is_pfas       = pfas == "YES"
+) |>
+summarise(
+total_releases_all   = sum(total_releases, na.rm = TRUE),
+total_carcinogen     = sum(if_else(is_carcinogen, total_releases, 0), na.rm = TRUE),
+total_pbt            = sum(if_else(is_pbt,        total_releases, 0), na.rm = TRUE),
+total_pfas           = sum(if_else(is_pfas,       total_releases, 0), na.rm = TRUE)
+) |>
+mutate(
+pct_carcinogen = 100 * total_carcinogen / total_releases_all,
+pct_pbt        = 100 * total_pbt        / total_releases_all,
+pct_pfas       = 100 * total_pfas       / total_releases_all
+)
+
+hazard_totals
+
+```
+
+### **b. High-hazard releases by industry sector**
+
+```{r}
+hazard_by_sector <- tri_clean |>
+mutate(
+is_carcinogen = carcinogen == "YES",
+is_pbt        = pbt == "YES",
+is_pfas       = pfas == "YES",
+any_hazard    = is_carcinogen | is_pbt | is_pfas
+) |>
+group_by(industry_sector) |>
+summarise(
+total_releases        = sum(total_releases, na.rm = TRUE),
+hazard_releases       = sum(if_else(any_hazard, total_releases, 0), na.rm = TRUE),
+carcinogen_releases   = sum(if_else(is_carcinogen, total_releases, 0), na.rm = TRUE),
+pbt_releases          = sum(if_else(is_pbt,        total_releases, 0), na.rm = TRUE),
+pfas_releases         = sum(if_else(is_pfas,       total_releases, 0), na.rm = TRUE)
+) |>
+mutate(
+pct_hazard_in_sector = 100 * hazard_releases / total_releases
+) |>
+arrange(desc(hazard_releases))
+
+head(hazard_by_sector, 10)
+
+```
+
+### **c. Bar chart of sectors with most hazard releases**
+
+```{r}
+hazard_by_sector |>
+slice_max(hazard_releases, n = 10) |>
+ggplot(aes(x = reorder(industry_sector, hazard_releases),
+y = hazard_releases)) +
+geom_col() +
+coord_flip() +
+labs(
+title = "Top 10 Industry Sectors by High-Hazard Releases (TRI 2024)",
+x = "Industry sector",
+y = "Releases of carcinogens, PBTs, or PFAS (lbs)"
+)
+```
