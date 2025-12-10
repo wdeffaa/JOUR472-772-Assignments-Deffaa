@@ -102,7 +102,7 @@ We can calculate r with a function from the corrr package called "correlate()". 
 
 ### Task 5: Correlate data
 
-**Task** Run the following code. Describe the table output in terms of the strength of relationships between the variables. What do you see?
+**Task** Run the following code. Describe the table output in terms of the strength of relationships between the variables. What do you see? **There seems to be not a whole lot of correlation of between the different variables.**
 
 ```{r}
 state_data |>
@@ -118,7 +118,7 @@ The relationship between a state's per-pupil education spending and population g
 
 ### Task 6: Correlate data
 
-**Task** Run the following code. Describe the model output. What do you see? **Answer**
+**Task** Run the following code. Describe the model output. What do you see? **It shows there to be not a significantly strong correlation.**
 
 ```{r}
 
@@ -132,7 +132,7 @@ Now let's test another one, the relationship between the per_pupil_2021 and gdp_
 
 ### Task 7: Correlate data
 
-**Task** Run the following code. Describe the model output. What do you see? **Answer**
+**Task** Run the following code. Describe the model output. What do you see? **I see a very weak correlation between these two variables.**
 
 ```{r}
 
@@ -158,7 +158,7 @@ We could just calculate the averages like we're used to doing.
 
 ### Task 8: Average data
 
-**Task** Run the following code. Describe the table. What do you see? **Answer**
+**Task** Run the following code. Describe the table. What do you see? **While the mean population growth was larger in states that voted Trump, mean gdp growth was larger under states that voted Biden.**
 
 ```{r}
 state_data |>
@@ -178,7 +178,7 @@ A t-test can help us answer that question. It can tell us where there's a statis
 
 ### Task 9: Run t-test
 
-**Task** Run the following code. Describe the output. What do you see? **Answer**
+**Task** Run the following code. Describe the output. What do you see? **The mean seems to be higher in group Trump v. group Biden.**
 
 ```{r}
 t.test(pop_change_2021 ~ vote_2020, data = state_data)
@@ -190,7 +190,7 @@ Let's try per-pupil education spending.
 
 ### Task 10: Run t-test
 
-**Task** Run the following code. Describe the output. What do you see? **Answer**
+**Task** Run the following code. Describe the output. What do you see? **The mean in group Biden is much higher than the mean in group Trump.**
 
 ```{r}
 t.test(per_pupil_2021 ~ vote_2020, data = state_data)
